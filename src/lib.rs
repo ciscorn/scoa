@@ -1,6 +1,7 @@
 //! SCOC (Simpler Cloud-optimized Chunks)
 
 pub mod delta;
+pub mod sfcurve;
 
 use std::io::{Cursor, Read, Write};
 
