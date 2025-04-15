@@ -2,7 +2,7 @@
 
 A minimal format for organizing arbitrary data chunks in a "cloud-optimized" way.
 
-"Cloud-optimized" means that contiguous sub-chunks can be retrieved with a single request (e.g., an HTTP Range request).
+"Cloud-optimized" means that contiguous sub-chunks of interest can be retrieved with a single request (e.g., an HTTP Range request).
 
 ## Storage Format
 
