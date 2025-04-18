@@ -24,21 +24,16 @@ struct LookupTable {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum ScocError {
+pub enum ScoaError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Invalid header: {0}")]
     InvalidHeader(String),
-    #[error("Decoding error occurred")]
-    DecodeError,
     #[error("Insufficient header bytes")]
     InsufficientHeader,
 }
 
-pub struct ScocReader<U>
-where
-    U: TryFrom<Vec<u8>, Error = ScocError>,
-{
+pub struct ScoaReader {
     /// Length of the header
     header_length: u32,
     /// Number of chunks
@@ -46,23 +41,20 @@ where
     /// Lookup table for binary searching chunks
     lookup_table: LookupTable,
     /// Arbitrary user data
-    user_data: U,
+    user_data: Vec<u8>,
 }
 
-impl<U> ScocReader<U>
-where
-    U: TryFrom<Vec<u8>, Error = ScocError>,
-{
-    pub fn from_header_bytes(bytes: &[u8]) -> Result<Self, ScocError> {
+impl ScoaReader {
+    pub fn from_header_bytes(bytes: &[u8]) -> Result<Self, ScoaError> {
         if &bytes[0..4] != b"SCOC" {
-            return Err(ScocError::InvalidHeader("magic must be 'SCOC'".to_string()));
+            return Err(ScoaError::InvalidHeader("magic must be 'SCOC'".to_string()));
         }
         if bytes.len() < 17 {
-            return Err(ScocError::InsufficientHeader);
+            return Err(ScoaError::InsufficientHeader);
         }
         let header_length = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
         if bytes.len() < header_length as usize {
-            return Err(ScocError::InsufficientHeader);
+            return Err(ScoaError::InsufficientHeader);
         }
 
         // TODO: Remove Cursor
@@ -70,7 +62,7 @@ where
 
         let version = cursor.read_u8()?;
         if version != 1 {
-            return Err(ScocError::InvalidHeader(format!(
+            return Err(ScoaError::InvalidHeader(format!(
                 "Unsupported version: {}",
                 version
             )));
@@ -88,31 +80,32 @@ where
             buf
         };
 
-        let lookup_table = {
-            let mut gzreader = GzDecoder::new(Cursor::new(&lookup_table_compressed));
-            let mut chunk_ids = Vec::new();
-            let mut end_positions = Vec::new();
-            for _ in 0..num_chunks {
-                chunk_ids.push(
-                    leb128::read::unsigned(&mut gzreader).map_err(|_| ScocError::DecodeError)?,
-                );
-            }
-            for _ in 0..num_chunks {
-                end_positions.push(
-                    leb128::read::unsigned(&mut gzreader).map_err(|_| ScocError::DecodeError)?,
-                );
-            }
-            LookupTable {
-                chunk_ids: delta_decode(chunk_ids, 1).collect(),
-                end_positions: delta_decode(end_positions, 1).collect(),
-            }
-        };
+        let lookup_table =
+            {
+                let mut gzreader = GzDecoder::new(Cursor::new(&lookup_table_compressed));
+                let mut chunk_ids = Vec::new();
+                let mut end_positions = Vec::new();
+                for _ in 0..num_chunks {
+                    chunk_ids.push(leb128::read::unsigned(&mut gzreader).map_err(|_| {
+                        ScoaError::InvalidHeader("Lookup table is broken".to_string())
+                    })?);
+                }
+                for _ in 0..num_chunks {
+                    end_positions.push(leb128::read::unsigned(&mut gzreader).map_err(|_| {
+                        ScoaError::InvalidHeader("Lookup table is broken".to_string())
+                    })?);
+                }
+                LookupTable {
+                    chunk_ids: delta_decode(chunk_ids, 1).collect(),
+                    end_positions: delta_decode(end_positions, 1).collect(),
+                }
+            };
 
-        Ok(ScocReader {
+        Ok(ScoaReader {
             header_length,
             num_chunks,
             lookup_table,
-            user_data: user_data.try_into()?,
+            user_data,
         })
     }
 
@@ -120,7 +113,7 @@ where
         self.num_chunks
     }
 
-    pub fn user_data(&self) -> &U {
+    pub fn user_data(&self) -> &[u8] {
         &self.user_data
     }
 
@@ -165,7 +158,7 @@ impl<'a> Chunks<'a> {
         let pos_end = if idx_end == lookup_table.chunk_ids.len() as u32 {
             *lookup_table.end_positions.last().unwrap()
         } else {
-            lookup_table.end_positions[idx_end as usize]
+            lookup_table.end_positions[(idx_end - 1) as usize]
         };
 
         Chunks {
@@ -185,43 +178,47 @@ impl<'a> Chunks<'a> {
         self.idx_end
     }
 
-    pub fn body_begin(&self) -> u64 {
-        self.body_offset as u64 + self.pos_begin
+    pub fn body_begin(&self) -> usize {
+        self.body_offset as usize + self.pos_begin as usize
     }
-    pub fn body_end(&self) -> u64 {
-        self.body_offset as u64 + self.pos_end
+
+    pub fn body_end(&self) -> usize {
+        self.body_offset as usize + self.pos_end as usize
     }
 
     pub fn body_size(&self) -> usize {
         (self.pos_end - self.pos_begin) as usize
     }
 
-    pub fn iter_chunks<'b>(&self, buf: &'b [u8]) -> impl Iterator<Item = &'b [u8]> {
+    pub fn iter_chunks<'b>(&self, buf: &'b [u8]) -> impl Iterator<Item = (u64, &'b [u8])> {
         let mut prev_pos_end = self.pos_begin;
         self.lookup_table.chunk_ids[self.idx_begin as usize..self.idx_end as usize]
             .iter()
             .zip_eq(
                 &self.lookup_table.end_positions[self.idx_begin as usize..self.idx_end as usize],
             )
-            .map(move |(&_chunk_id, &end_position)| {
+            .map(move |(&chunk_id, &end_position)| {
                 let (start, end) = (prev_pos_end, end_position);
                 prev_pos_end = end;
-                &buf[(start - self.pos_begin) as usize..(end - self.pos_begin) as usize]
+                (
+                    chunk_id,
+                    &buf[(start - self.pos_begin) as usize..(end - self.pos_begin) as usize],
+                )
             })
     }
 }
 
 pub fn compress_lookup_table(
-    chunk_ids: Vec<u32>,
-    end_positions: Vec<u32>,
+    chunk_ids: impl IntoIterator<Item = u64>,
+    end_positions: impl IntoIterator<Item = u64>,
 ) -> std::io::Result<Vec<u8>> {
     let lookup_table_compressed = {
         let mut bin_tbl = vec![];
         for v in delta_encode(chunk_ids, 1) {
-            leb128::write::unsigned(&mut bin_tbl, v as u64)?;
+            leb128::write::unsigned(&mut bin_tbl, v)?;
         }
         for v in delta_encode(end_positions, 1) {
-            leb128::write::unsigned(&mut bin_tbl, v as u64)?;
+            leb128::write::unsigned(&mut bin_tbl, v)?;
         }
         let mut writer = GzEncoder::new(vec![], Compression::default());
         writer.write_all(&bin_tbl)?;
@@ -232,12 +229,12 @@ pub fn compress_lookup_table(
 
 pub fn write_header(
     mut writer: impl WriteBytesExt,
-    chunk_ids: Vec<u32>,
-    end_positions: Vec<u32>,
+    num_chunks: u32,
+    chunk_ids: impl IntoIterator<Item = u64>,
+    end_positions: impl IntoIterator<Item = u64>,
     user_data: Vec<u8>,
 ) -> std::io::Result<()> {
     writer.write_all(b"SCOC")?;
-    let num_chunks = chunk_ids.len() as u32;
     let lookup_table_compressed = compress_lookup_table(chunk_ids, end_positions)?;
     writer
         .write_u32::<LittleEndian>((17 + lookup_table_compressed.len() + user_data.len()) as u32)?;
@@ -247,4 +244,59 @@ pub fn write_header(
     writer.write_all(&lookup_table_compressed)?;
     writer.write_all(&user_data)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scoa() {
+        // Writing
+        let user_data = vec![123; 100];
+        let buf = {
+            let mut body = vec![];
+            let mut chunk_ids = vec![];
+            let mut end_positions = vec![];
+            for i in 0..17 {
+                let chunk_id = (i * 100) as u64;
+                body.extend(vec![i as u8; 100 * i]);
+                chunk_ids.push(chunk_id);
+                end_positions.push(body.len() as u64);
+            }
+            let mut buf = vec![];
+            write_header(
+                &mut buf,
+                chunk_ids.len() as u32,
+                chunk_ids,
+                end_positions,
+                user_data.clone(),
+            )
+            .unwrap();
+            buf.write_all(&body).unwrap();
+            buf
+        };
+
+        // Reading
+        let reader = ScoaReader::from_header_bytes(&buf[..1000]).unwrap();
+        assert_eq!(reader.user_data(), vec![123; 100]);
+        assert_eq!(reader.num_chunks(), 17);
+        assert!(reader.header_length() < 200);
+        assert_eq!(reader.lookup_table.chunk_ids.len(), 17);
+        assert_eq!(reader.lookup_table.end_positions.len(), 17);
+        let chunks = reader.bisect_range(1200, 1500).unwrap();
+        assert_eq!(chunks.idx_begin(), 12);
+        assert_eq!(chunks.idx_end(), 15);
+        assert_eq!(chunks.body_size(), 1200 + 1300 + 1400);
+        for (chunk_id, raw_chunk) in
+            chunks.iter_chunks(&buf[chunks.body_begin()..chunks.body_end()])
+        {
+            assert_eq!(raw_chunk.len(), chunk_id as usize);
+        }
+
+        assert!(reader.bisect_range(0, 1000).is_some());
+        assert!(reader.bisect_range(1600, 1700).is_some());
+        assert!(reader.bisect_range(0, 0).is_none());
+        assert!(reader.bisect_range(1700, 1800).is_none());
+    }
 }

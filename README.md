@@ -1,14 +1,19 @@
-# SCOC (Simpler Cloud-Optimized Chunks)
+# SCOA (Simpler Cloud-optimized Archive)
 
-A minimal format for organizing arbitrary data chunks in a "cloud-optimized" way.
+[![codecov](https://codecov.io/gh/MIERUNE/scoa/graph/badge.svg?token=3Nd2rFCRYz)](https://codecov.io/gh/MIERUNE/scoa)
 
-"Cloud-optimized" means that contiguous sub-chunks of interest can be retrieved with a single request (e.g., an HTTP Range request).
+(experimental)
+
+A simple, versatile format for organizing arbitrary data chunks in a “cloud-optimized” way.
+
+"[Cloud-optimized](https://guide.cloudnativegeo.org/)" means that contiguous sub-chunks of interest can be retrieved with a single request (e.g., an HTTP Range request).
 
 ## Storage Format
 
 - Header:
-    - Lookup table for binary search over chunks
-- Body is just a sequence of chunks:
+    - A lookup table enabling binary search across chunks
+    - Any user data
+- Body is a simple sequence of chunks:
     - Chunk
     - Chunk
     - Chunk

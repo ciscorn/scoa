@@ -1,8 +1,8 @@
 [package]
-name = "scoc"
+name = "scoa"
 version = "0.1.0"
 edition = "2024"
-description = "Simpler Cloud-Optimized Container"
+description = "Simpler Cloud-optimized Archive"
 
 [dependencies]
 byteorder = "1.5.0"

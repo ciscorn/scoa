@@ -1,4 +1,4 @@
-//! Space filling curves
+//! Space filling curve utilities
 
 mod hilbert;
 mod spiral;
