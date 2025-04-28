@@ -1,5 +1,6 @@
 //! Delta encoding utilities
 
+#[inline]
 pub fn delta_encode<T: core::ops::Sub<Output = T> + Copy + Default>(
     it: impl IntoIterator<Item = T>,
     a: T,
@@ -14,6 +15,7 @@ pub fn delta_encode<T: core::ops::Sub<Output = T> + Copy + Default>(
     }))
 }
 
+#[inline]
 pub fn delta_decode<T: core::ops::Add<Output = T> + Copy + Default>(
     it: impl IntoIterator<Item = T>,
     a: T,

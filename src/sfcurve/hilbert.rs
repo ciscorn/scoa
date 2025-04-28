@@ -1,5 +1,6 @@
 //! Hilbert curve ID
 
+#[inline]
 pub fn xy_to_hilbert(base_z: u8, mut x: u32, mut y: u32) -> u64 {
     (0..base_z).rev().fold(0, |acc, a| {
         let s = 1 << a;
@@ -10,6 +11,7 @@ pub fn xy_to_hilbert(base_z: u8, mut x: u32, mut y: u32) -> u64 {
     })
 }
 
+#[inline]
 pub fn hilbert_to_xy(base_z: u8, id: u64) -> (u32, u32) {
     let mut pos = id;
     let (x, y) = (0..base_z).fold((0, 0), |(x, y), a| {
@@ -23,6 +25,7 @@ pub fn hilbert_to_xy(base_z: u8, id: u64) -> (u32, u32) {
     (x, y)
 }
 
+#[inline]
 pub fn hilbert_to_zxy(id: u64) -> (u8, u32, u32) {
     let z = (((u64::BITS - (3 * id + 1).leading_zeros()) - 1) / 2) as u8;
     let acc = ((1 << (z * 2)) - 1) / 3;
@@ -38,6 +41,7 @@ pub fn hilbert_to_zxy(id: u64) -> (u8, u32, u32) {
     (z, x, y)
 }
 
+#[inline]
 pub fn zxy_to_hilbert(z: u8, mut x: u32, mut y: u32) -> u64 {
     let acc = ((1 << (z * 2)) - 1) / 3;
     (0..z).rev().fold(acc, |acc, a| {
@@ -49,6 +53,7 @@ pub fn zxy_to_hilbert(z: u8, mut x: u32, mut y: u32) -> u64 {
     })
 }
 
+#[inline]
 const fn rotate(n: u32, mut x: u32, mut y: u32, rx: u32, ry: u32) -> (u32, u32) {
     if ry == 0 {
         if rx != 0 {

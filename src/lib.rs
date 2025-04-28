@@ -171,25 +171,31 @@ impl<'a> Chunks<'a> {
         }
     }
 
+    #[inline]
     pub fn idx_begin(&self) -> u32 {
         self.idx_begin
     }
+    #[inline]
     pub fn idx_end(&self) -> u32 {
         self.idx_end
     }
 
+    #[inline]
     pub fn body_begin(&self) -> usize {
         self.body_offset as usize + self.pos_begin as usize
     }
 
+    #[inline]
     pub fn body_end(&self) -> usize {
         self.body_offset as usize + self.pos_end as usize
     }
 
+    #[inline]
     pub fn body_size(&self) -> usize {
         (self.pos_end - self.pos_begin) as usize
     }
 
+    #[inline]
     pub fn iter_chunks<'b>(&self, buf: &'b [u8]) -> impl Iterator<Item = (u64, &'b [u8])> {
         let mut prev_pos_end = self.pos_begin;
         self.lookup_table.chunk_ids[self.idx_begin as usize..self.idx_end as usize]

@@ -1,6 +1,6 @@
 [package]
 name = "scoa"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Simpler Cloud-optimized Archive"
 

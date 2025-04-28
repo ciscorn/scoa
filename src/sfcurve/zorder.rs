@@ -1,3 +1,4 @@
+#[inline]
 pub fn xy_to_zorder(x: u32, y: u32) -> u64 {
     let x = x as u64;
     let y = y as u64;
@@ -17,6 +18,7 @@ pub fn xy_to_zorder(x: u32, y: u32) -> u64 {
     x + (y << 1)
 }
 
+#[inline]
 pub fn zorder_to_xy(id: u64) -> (u32, u32) {
     let x = id;
     let y = id >> 1;

@@ -1,5 +1,6 @@
 //! Spiral curve ID
 
+#[inline]
 pub fn xy_to_spiral(x: i16, y: i16) -> u32 {
     let x = x as i32;
     let y = y as i32;
@@ -17,6 +18,7 @@ pub fn xy_to_spiral(x: i16, y: i16) -> u32 {
     }) as u32
 }
 
+#[inline]
 pub fn spiral_to_xy(x: u32) -> (i16, i16) {
     if x == 0 {
         return (0, 0);
