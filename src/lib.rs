@@ -1,4 +1,4 @@
-//! SCOC (Simpler Cloud-optimized Chunks)
+//! SCOA (Simpler Cloud-optimized Archive)
 
 pub mod delta;
 pub mod sfcurve;
@@ -46,8 +46,8 @@ pub struct ScoaReader {
 
 impl ScoaReader {
     pub fn from_header_bytes(bytes: &[u8]) -> Result<Self, ScoaError> {
-        if &bytes[0..4] != b"SCOC" {
-            return Err(ScoaError::InvalidHeader("magic must be 'SCOC'".to_string()));
+        if &bytes[0..4] != b"SCOA" {
+            return Err(ScoaError::InvalidHeader("magic must be 'SCOA'".to_string()));
         }
         if bytes.len() < 17 {
             return Err(ScoaError::InsufficientHeader);
@@ -240,7 +240,7 @@ pub fn write_header(
     end_positions: impl IntoIterator<Item = u64>,
     user_data: Vec<u8>,
 ) -> std::io::Result<()> {
-    writer.write_all(b"SCOC")?;
+    writer.write_all(b"SCOA")?;
     let lookup_table_compressed = compress_lookup_table(chunk_ids, end_positions)?;
     writer
         .write_u32::<LittleEndian>((17 + lookup_table_compressed.len() + user_data.len()) as u32)?;

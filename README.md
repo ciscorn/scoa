@@ -23,7 +23,7 @@ A simple, versatile format for organizing arbitrary data chunks in a “cloud-op
 // pseudo-code
 
 struct _Header {
-    /// "SCOC"
+    /// "SCOA"
     magic: [u8; 4],
 
     /// Length of the header
