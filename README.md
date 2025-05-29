@@ -1,12 +1,10 @@
-# SCOA (Simpler Cloud-optimized Archive)
+# SCOA: Simpler Cloud-optimized Archive
 
 [![codecov](https://codecov.io/gh/MIERUNE/scoa/graph/badge.svg?token=3Nd2rFCRYz)](https://codecov.io/gh/MIERUNE/scoa)
 
-(experimental)
+(experimental) A simple base format for organizing arbitrary data chunks in a “cloud-optimized” way.
 
-A simple, versatile format for organizing arbitrary data chunks in a “cloud-optimized” way.
-
-"[Cloud-optimized](https://guide.cloudnativegeo.org/)" means that contiguous sub-chunks of interest can be retrieved with a single request (e.g., an HTTP Range request).
+[Cloud-optimized](https://guide.cloudnativegeo.org/) in geospatial contexts means that contiguous sub-chunks can be retrieved with a single request (e.g., an HTTP Range request).
 
 ## Storage Format
 
