@@ -238,7 +238,7 @@ pub fn write_header(
     num_chunks: u32,
     chunk_ids: impl IntoIterator<Item = u64>,
     end_positions: impl IntoIterator<Item = u64>,
-    user_data: Vec<u8>,
+    user_data: &[u8],
 ) -> std::io::Result<()> {
     writer.write_all(b"SCOA")?;
     let lookup_table_compressed = compress_lookup_table(chunk_ids, end_positions)?;
@@ -248,7 +248,7 @@ pub fn write_header(
     writer.write_u32::<LittleEndian>(num_chunks)?;
     writer.write_u32::<LittleEndian>(lookup_table_compressed.len() as u32)?;
     writer.write_all(&lookup_table_compressed)?;
-    writer.write_all(&user_data)?;
+    writer.write_all(user_data)?;
     Ok(())
 }
 
@@ -276,7 +276,7 @@ mod tests {
                 chunk_ids.len() as u32,
                 chunk_ids,
                 end_positions,
-                user_data.clone(),
+                &user_data,
             )
             .unwrap();
             buf.write_all(&body).unwrap();
