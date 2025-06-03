@@ -196,7 +196,10 @@ impl<'a> Chunks<'a> {
     }
 
     #[inline]
-    pub fn iter_chunks<'b>(&self, buf: &'b [u8]) -> impl Iterator<Item = (u64, &'b [u8])> {
+    pub fn iter_chunks<'b>(
+        &self,
+        buf: &'b [u8],
+    ) -> impl Iterator<Item = (u64, &'b [u8])> + use<'_, 'b> {
         let mut prev_pos_end = self.pos_begin;
         self.lookup_table.chunk_ids[self.idx_begin as usize..self.idx_end as usize]
             .iter()
